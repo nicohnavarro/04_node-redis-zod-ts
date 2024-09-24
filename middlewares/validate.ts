@@ -4,6 +4,7 @@ import { ZodSchema } from "zod";
 export const validate =
   <T>(schema: ZodSchema<T>) =>
   (req: Request, res: Response, next: NextFunction) => {
+    console.log(req);
     const result = schema.safeParse(req.body);
     if (!result.success) {
       return res
