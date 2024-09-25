@@ -9,6 +9,15 @@ export const checkRestaurantExist = async (
   next: NextFunction,
 ) => {
   const { restaurantId } = req.params;
+
   if (!restaurantId) return errorResponse(res, 400, "Restaurant Id not found");
+
+  const client = await initializeRedisClient();
+  const restaurantKey = restaurantKeyById(restaurantId);
+  const isRestaurantExist = await client.exists(restaurantKey);
+
+  if (!isRestaurantExist)
+    return errorResponse(res, 404, "Restaurant Not Found");
+
   next();
 };
