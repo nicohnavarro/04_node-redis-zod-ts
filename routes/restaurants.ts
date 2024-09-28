@@ -7,9 +7,14 @@ import { RestaurantSchema, type Restaurant } from "../schemas/restaurant.js";
 import { validate } from "../middlewares/validate.js";
 import { initializeRedisClient } from "../utils/client.js";
 import { nanoid } from "nanoid";
-import { restaurantKeyById } from "../utils/keys.js";
+import {
+  restaurantKeyById,
+  reviewDetailsKeyById,
+  reviewKeyById,
+} from "../utils/keys.js";
 import { successResponse } from "../utils/responses.js";
 import { checkRestaurantExist } from "../middlewares/checkRestaurant.js";
+import { ReviewSchema, type Review } from "../schemas/review.js";
 
 const router = express.Router();
 
@@ -26,10 +31,42 @@ router.get(
       const client = await initializeRedisClient();
       const restaurantKey = restaurantKeyById(restaurantId);
       const [viewCount, restaurant] = await Promise.all([
-        client.hIncrBy(restaurantKey, "viewCount", 1),
         client.hGetAll(restaurantKey),
+        client.hIncrBy(restaurantKey, "viewCount", 1),
       ]);
       return successResponse(res, restaurant);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+router.post(
+  "/:restaurantId/reviews",
+  checkRestaurantExist,
+  validate(ReviewSchema),
+  async (req: Request<{ restaurantId: string }>, res, next) => {
+    const { restaurantId } = req.params;
+    const data = req.body as Review;
+    try {
+      const client = await initializeRedisClient();
+      const reviewId = nanoid();
+      const reviewKey = reviewKeyById(restaurantId);
+      const reviewDetailsKey = reviewDetailsKeyById(reviewId);
+
+      const reviewData = {
+        id: reviewId,
+        ...data,
+        timestamp: Date.now(),
+        restaurantId,
+      };
+
+      await Promise.all([
+        client.lPush(reviewKey, reviewId),
+        client.hSet(reviewDetailsKey, reviewData),
+      ]);
+
+      return successResponse(res, reviewData, "Review Added");
     } catch (error) {
       next(error);
     }
@@ -47,7 +84,6 @@ router.post(
       const restaurantKey = restaurantKeyById(id);
       const hashData = { id, name: data.name, location: data.location };
       const addResult = await client.hSet(restaurantKey, hashData);
-      console.log(`Added ${addResult} fields`);
       return successResponse(res, hashData, "Added new restaurant");
     } catch (error) {
       next(error);
@@ -55,8 +91,6 @@ router.post(
   },
 );
 
-router.put("/", validate(RestaurantSchema), async (req, res) => {
-  console.log("PUT");
-});
+router.put("/", validate(RestaurantSchema), async (req, res) => {});
 
 export default router;
