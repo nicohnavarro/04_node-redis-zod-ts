@@ -12,7 +12,7 @@ import {
   reviewDetailsKeyById,
   reviewKeyById,
 } from "../utils/keys.js";
-import { successResponse } from "../utils/responses.js";
+import { errorResponse, successResponse } from "../utils/responses.js";
 import { checkRestaurantExist } from "../middlewares/checkRestaurant.js";
 import { ReviewSchema, type Review } from "../schemas/review.js";
 
@@ -67,6 +67,56 @@ router.post(
       ]);
 
       return successResponse(res, reviewData, "Review Added");
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+router.get(
+  "/:restaurantId/reviews",
+  checkRestaurantExist,
+  validate(ReviewSchema),
+  async (req: Request<{ restaurantId: string }>, res, next) => {
+    const { restaurantId } = req.params;
+    const { page = 1, limit = 10 } = req.query;
+    const start = (Number(page) - 1) * Number(limit);
+    const end = start + Number(limit) - 1;
+    try {
+      const client = await initializeRedisClient();
+      const reviewKey = reviewKeyById(restaurantId);
+      const reviewIds = await client.lRange(reviewKey, start, end);
+      const reviews = await Promise.all(
+        reviewIds.map((id) => client.hGetAll(reviewDetailsKeyById(id))),
+      );
+      return successResponse(res, reviews);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+router.delete(
+  "/:restaurantId/reviews/:reviewId",
+  checkRestaurantExist,
+  async (
+    req: Request<{ restaurantId: string; reviewId: string }>,
+    res: Response,
+    next: NextFunction,
+  ) => {
+    const { restaurantId, reviewId } = req.params;
+    try {
+      const client = await initializeRedisClient();
+      const reviewKey = reviewKeyById(restaurantId);
+      const reviewDetailsKey = reviewDetailsKeyById(reviewId);
+      const [removeResult, deleteResult] = await Promise.all([
+        client.lRem(reviewKey, 0, reviewId),
+        client.del(reviewDetailsKey),
+      ]);
+      if (removeResult === 0 && deleteResult === 0) {
+        return errorResponse(res, 404, "Review not found");
+      }
+      return successResponse(res, reviewId, "Review deleted");
     } catch (error) {
       next(error);
     }
