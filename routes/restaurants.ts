@@ -8,6 +8,9 @@ import { validate } from "../middlewares/validate.js";
 import { initializeRedisClient } from "../utils/client.js";
 import { nanoid } from "nanoid";
 import {
+  cuisineKey,
+  cuisinesKey,
+  restaurantCuisinesKeyById,
   restaurantKeyById,
   reviewDetailsKeyById,
   reviewKeyById,
@@ -30,11 +33,12 @@ router.get(
     try {
       const client = await initializeRedisClient();
       const restaurantKey = restaurantKeyById(restaurantId);
-      const [viewCount, restaurant] = await Promise.all([
-        client.hGetAll(restaurantKey),
+      const [viewCount, restaurant, cuisines] = await Promise.all([
         client.hIncrBy(restaurantKey, "viewCount", 1),
+        client.hGetAll(restaurantKey),
+        client.sMembers(restaurantCuisinesKeyById(restaurantId)),
       ]);
-      return successResponse(res, restaurant);
+      return successResponse(res, { ...restaurant, cuisines });
     } catch (error) {
       next(error);
     }
@@ -133,7 +137,16 @@ router.post(
       const id = nanoid();
       const restaurantKey = restaurantKeyById(id);
       const hashData = { id, name: data.name, location: data.location };
-      const addResult = await client.hSet(restaurantKey, hashData);
+      await Promise.all([
+        ...data.cuisines.map((cuisine) =>
+          Promise.all([
+            client.sAdd(cuisinesKey, cuisine),
+            client.sAdd(cuisineKey(cuisine), id),
+            client.sAdd(restaurantCuisinesKeyById(id), cuisine),
+          ]),
+        ),
+        client.hSet(restaurantKey, hashData),
+      ]);
       return successResponse(res, hashData, "Added new restaurant");
     } catch (error) {
       next(error);

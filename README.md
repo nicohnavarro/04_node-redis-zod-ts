@@ -30,3 +30,27 @@ using Hashes
 [HGETALL] : Returns all the fields and values of the hash stored at key
 [HMGET] : Return the value at one or more given fields
 [HINCRBY] : Increments the value at a given field by the integer provided
+
+### Sets
+
+Unordered Collection
+Unique Strings
+
+- cuisines => key
+- cuisine:italian
+- restaurant_cuisines: restaurant1
+
+| cuisines |
+| -------- |
+| Italian  |
+| Japanise |
+| Mexican  |
+| Indian   |
+
+[SADD]: Add a new member to a set
+[SREM]: Removes the specified member fron the set
+[SISMEMBER]: Test a string for a set membership
+[SINTER]: returns the set of members that two or more sets have in common
+[SCARD]: returns the size of a set
+
+#### Sorted Sets
