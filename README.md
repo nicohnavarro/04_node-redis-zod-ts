@@ -54,3 +54,21 @@ Unique Strings
 [SCARD]: returns the size of a set
 
 #### Sorted Sets
+
+- Unique string
+- Ordered by a score
+- Leaderboard
+
+`restaurants:by_rating => key`
+| Restaurant | Rating |
+| -------------- | --------------- |
+| restaurant1 | 3.5 |
+| restaurant2 | 4 |
+| restaurant3 | 5 |
+
+Member | Score
+
+[ZADD]: Adds new member and associated score to a sorted set
+[ZRANGE]: Returns a member of a sorted set, sorted within a given range
+[ZRANK]: Returns the rank of the provided member assuming the sorted
+[ZREVRANK]: Returns the rank of the provided member assuming the sorted set

@@ -10,6 +10,7 @@ import { nanoid } from "nanoid";
 import {
   cuisineKey,
   cuisinesKey,
+  restaurantByRatingKey,
   restaurantCuisinesKeyById,
   restaurantKeyById,
   reviewDetailsKeyById,
@@ -20,6 +21,28 @@ import { checkRestaurantExist } from "../middlewares/checkRestaurant.js";
 import { ReviewSchema, type Review } from "../schemas/review.js";
 
 const router = express.Router();
+
+router.get("/", async (req: Request, res: Response, next: NextFunction) => {
+  const { page = 1, limit = 10 } = req.query;
+  const start = (Number(page) - 1) * Number(limit);
+  const end = start + Number(limit);
+  try {
+    const client = await initializeRedisClient();
+    const restaurantIds = await client.zRange(
+      restaurantByRatingKey,
+      start,
+      end,
+      //{ REV: true }, For some reason this doesn't work ☹️
+    );
+    console.log(restaurantIds);
+    const restaurants = await Promise.all(
+      restaurantIds.map((id) => client.hGetAll(restaurantKeyById(id))),
+    );
+    return successResponse(res, restaurants);
+  } catch (error) {
+    next(error);
+  }
+});
 
 router.get(
   "/:restaurantId",
@@ -57,7 +80,7 @@ router.post(
       const reviewId = nanoid();
       const reviewKey = reviewKeyById(restaurantId);
       const reviewDetailsKey = reviewDetailsKeyById(reviewId);
-
+      const restaurantKey = restaurantKeyById(restaurantId);
       const reviewData = {
         id: reviewId,
         ...data,
@@ -65,11 +88,19 @@ router.post(
         restaurantId,
       };
 
-      await Promise.all([
+      const [reviewCount, setResult, totalStars] = await Promise.all([
         client.lPush(reviewKey, reviewId),
         client.hSet(reviewDetailsKey, reviewData),
+        client.hIncrByFloat(restaurantKey, "totalStars", data.rating),
       ]);
-
+      const avgRating = Number((totalStars / reviewCount).toFixed(1));
+      await Promise.all([
+        client.zAdd(restaurantByRatingKey, {
+          score: avgRating,
+          value: restaurantId,
+        }),
+        client.hSet(restaurantKey, "avgStars", avgRating),
+      ]);
       return successResponse(res, reviewData, "Review Added");
     } catch (error) {
       next(error);
@@ -146,6 +177,7 @@ router.post(
           ]),
         ),
         client.hSet(restaurantKey, hashData),
+        client.zAdd(restaurantByRatingKey, { score: 0, value: id }),
       ]);
       return successResponse(res, hashData, "Added new restaurant");
     } catch (error) {
