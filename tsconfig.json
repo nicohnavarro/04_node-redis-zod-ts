@@ -6,7 +6,7 @@
     "allowJs": true,
     "resolveJsonModule": true,
     "moduleDetection": "force",
-    "isolatedModule": true,
+    "isolatedModules": true,
     "verbatimModuleSyntax": true,
     "strict": true,
     "noUncheckedIndexedAccess": true,
@@ -14,6 +14,8 @@
     "module": "NodeNext",
     "outDir": "dist",
     "sourceMap": true,
-    "lib": ["es2022"]
+    "lib": [
+      "es2022"
+    ]
   }
 }

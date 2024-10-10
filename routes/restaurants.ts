@@ -2,12 +2,10 @@ import express, {
   type Request,
   type Response,
   type NextFunction,
-  response,
 } from "express";
 import { RestaurantSchema, type Restaurant } from "../schemas/restaurant.js";
 import { validate } from "../middlewares/validate.js";
 import { initializeRedisClient } from "../utils/client.js";
-import { nanoid } from "nanoid";
 import {
   cuisineKey,
   cuisinesKey,
@@ -21,6 +19,7 @@ import {
 import { errorResponse, successResponse } from "../utils/responses.js";
 import { checkRestaurantExist } from "../middlewares/checkRestaurant.js";
 import { ReviewSchema, type Review } from "../schemas/review.js";
+import { nanoid } from "nanoid";
 
 const router = express.Router();
 
