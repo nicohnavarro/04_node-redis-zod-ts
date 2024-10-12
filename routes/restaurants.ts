@@ -14,6 +14,7 @@ import { initializeRedisClient } from "../utils/client.js";
 import {
   cuisineKey,
   cuisinesKey,
+  indexKey,
   restaurantByRatingKey,
   restaurantCuisinesKeyById,
   restaurantDetailsKeyById,
@@ -46,6 +47,17 @@ router.get("/", async (req: Request, res: Response, next: NextFunction) => {
       restaurantIds.map((id) => client.hGetAll(restaurantKeyById(id))),
     );
     return successResponse(res, restaurants);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/search", async (req, res, next) => {
+  const { q } = req.query;
+  try {
+    const client = await initializeRedisClient();
+    const results = await client.ft.search(indexKey, `@name:${q}`);
+    return successResponse(res, results);
   } catch (error) {
     next(error);
   }
