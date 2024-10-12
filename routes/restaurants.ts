@@ -3,7 +3,12 @@ import express, {
   type Response,
   type NextFunction,
 } from "express";
-import { RestaurantSchema, type Restaurant } from "../schemas/restaurant.js";
+import {
+  RestaurantDetailsSchema,
+  RestaurantSchema,
+  type Restaurant,
+  type RestaurantDetails,
+} from "../schemas/restaurant.js";
 import { validate } from "../middlewares/validate.js";
 import { initializeRedisClient } from "../utils/client.js";
 import {
@@ -11,6 +16,7 @@ import {
   cuisinesKey,
   restaurantByRatingKey,
   restaurantCuisinesKeyById,
+  restaurantDetailsKeyById,
   restaurantKeyById,
   reviewDetailsKeyById,
   reviewKeyById,
@@ -133,6 +139,23 @@ router.get(
   },
 );
 
+router.get(
+  "/:restaurantId/details",
+  checkRestaurantExist,
+  async (req: Request<{ restaurantId: string }>, res, next) => {
+    const { restaurantId } = req.params;
+    const data = req.body as RestaurantDetails;
+    try {
+      const client = await initializeRedisClient();
+      const restaurantDetailsKey = restaurantDetailsKeyById(restaurantId);
+      const details = await client.json.get(restaurantDetailsKey);
+      return successResponse(res, details);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
 router.post(
   "/",
   validate(RestaurantSchema),
@@ -195,6 +218,24 @@ router.post(
         client.hSet(restaurantKey, "avgStars", avgRating),
       ]);
       return successResponse(res, reviewData, "Review Added");
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+router.post(
+  "/:restaurantId/details",
+  checkRestaurantExist,
+  validate(RestaurantDetailsSchema),
+  async (req: Request<{ restaurantId: string }>, res, next) => {
+    const { restaurantId } = req.params;
+    const data = req.body as RestaurantDetails;
+    try {
+      const client = await initializeRedisClient();
+      const restaurantDetailsKey = restaurantDetailsKeyById(restaurantId);
+      await client.json.set(restaurantDetailsKey, ".", data);
+      return successResponse(res, {}, "Restaurant details added");
     } catch (error) {
       next(error);
     }

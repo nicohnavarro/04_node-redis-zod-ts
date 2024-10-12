@@ -20,4 +20,4 @@ export const RestaurantDetailsSchema = z.object({
 });
 
 export type Restaurant = z.infer<typeof RestaurantSchema>;
-export type RestaurantDetail = z.infer<typeof RestaurantDetailsSchema>;
+export type RestaurantDetails = z.infer<typeof RestaurantDetailsSchema>;
