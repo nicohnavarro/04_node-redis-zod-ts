@@ -12,6 +12,7 @@ import {
 import { validate } from "../middlewares/validate.js";
 import { initializeRedisClient } from "../utils/client.js";
 import {
+  bloomKey,
   cuisineKey,
   cuisinesKey,
   indexKey,
@@ -177,6 +178,11 @@ router.post(
       const client = await initializeRedisClient();
       const id = nanoid();
       const restaurantKey = restaurantKeyById(id);
+      const bloomString = `${data.name}:${data.location}`;
+      const seenBefore = await client.bf.exists(bloomKey, bloomString);
+      if (seenBefore) {
+        return errorResponse(res, 409, "Restaurant already exists");
+      }
       const hashData = { id, name: data.name, location: data.location };
       await Promise.all([
         ...data.cuisines.map((cuisine) =>
@@ -188,6 +194,7 @@ router.post(
         ),
         client.hSet(restaurantKey, hashData),
         client.zAdd(restaurantByRatingKey, { score: 0, value: id }),
+        client.bf.add(bloomKey, bloomString),
       ]);
       return successResponse(res, hashData, "Added new restaurant");
     } catch (error) {
